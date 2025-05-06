@@ -1,172 +1,107 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  Alert, 
-  StyleSheet,
-  ActivityIndicator 
-} from 'react-native';
-import { auth } from '../navigation/services/firebase';
-import { signInWithEmailAndPassword } from '../navigation/services/firebase';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import React, { useState, useEffect } from 'react'
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  Alert,
+  TouchableOpacity
+} from 'react-native'
+import { useNavigation } from '@react-navigation/native'
+import auth from '@react-native-firebase/auth'
+import { GoogleSignin } from '@react-native-google-signin/google-signin'
 
-export default function LoginScreen({ navigation }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+const LoginScreen = () => {
+  const navigation = useNavigation()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
+  // Configure Google SignIn
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
-    });
-  }, []);
+      webClientId: '49476995375-gko8935aoabfglgijlhhsip1gl58e2lv.apps.googleusercontent.com',
+    })
+  }, [])
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
+      Alert.alert('Error', 'Please enter both email and password')
+      return
     }
 
-    setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigation.navigate('Feed');
+      const userCredential = await auth().signInWithEmailAndPassword(email, password)
+      const user = userCredential.user
+      Alert.alert('Success', `Welcome back, ${user.email}!`)
+      setEmail('')
+      setPassword('')
+// In handleLogin and handleGoogleLogin functions:
+navigation.replace('Feed');
     } catch (error) {
-      let errorMessage = 'Login failed';
+      console.log('Login error:', error)
       switch (error.code) {
         case 'auth/user-not-found':
-          errorMessage = 'User not found';
-          break;
+          Alert.alert('User not found', 'Please check your email and try again.')
+          break
         case 'auth/wrong-password':
-          errorMessage = 'Incorrect password';
-          break;
+          Alert.alert('Incorrect password', 'Please check your password and try again.')
+          break
+        default:
+          Alert.alert('Login Error', error.message)
+          break
       }
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
     }
-  };
+  }
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
+  // Login with Google
+  const handleGoogleLogin = async () => {
     try {
-      await GoogleSignin.hasPlayServices();
-      const { idToken } = await GoogleSignin.signIn();
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-      await auth.signInWithCredential(googleCredential);
-      navigation.navigate('Feed');
+      const { idToken } = await GoogleSignin.signIn() // Get ID Token
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken) // Create Google Credential
+      const userCredential = await auth().signInWithCredential(googleCredential) // Sign in with credential
+      const user = userCredential.user
+      Alert.alert('Success', `Welcome back, ${user.email}!`)
+      navigation.replace('MainApp');
     } catch (error) {
-      Alert.alert('Error', error.message);
-    } finally {
-      setLoading(false);
+      console.log('Google Login Error:', error)
+      Alert.alert('Google Login Error', error.message)
     }
-  };
-
+  }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 20, marginBottom: 20 }}>Login Screen</Text>
 
       <TextInput
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
-        style={styles.input}
         autoCapitalize="none"
         keyboardType="email-address"
+        style={{ borderWidth: 1, marginVertical: 10, padding: 8 }}
       />
 
       <TextInput
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        style={styles.input}
         secureTextEntry
+        style={{ borderWidth: 1, marginVertical: 10, padding: 8 }}
       />
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Login</Text>
-        </TouchableOpacity>
-      )}
-      <TouchableOpacity 
-  style={styles.googleButton}
-  onPress={handleGoogleSignIn}
-  disabled={loading}
->
-  <Text style={styles.googleButtonText}>Sign in with Google</Text>
-</TouchableOpacity>
+      <Button title="Login" onPress={handleLogin} />
 
-      <TouchableOpacity 
-        style={styles.secondaryButton}
-        onPress={() => navigation.navigate('SignupScreen')}
-        >
-        <Text style={styles.secondaryText}>Don't have an account? Sign Up</Text>
+      <View style={{ marginVertical: 10 }}>
+        <Button title="Login with Google" onPress={handleGoogleLogin} />
+      </View>
+
+      <TouchableOpacity onPress={() => navigation.navigate('signup')}>
+        <Text style={{ marginTop: 20, color: 'blue', textAlign: 'center' }}>
+          Don't have an account? Sign Up
+        </Text>
       </TouchableOpacity>
     </View>
-  );
+  )
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#f5f5f5'
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center'
-  },
-  input: {
-    height: 50,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-    backgroundColor: 'white'
-  },
-  button: {
-    backgroundColor: '#007bff',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 15
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16
-  },
-  secondaryButton: {
-    alignItems: 'center'
-  },
-  secondaryText: {
-    color: '#007bff',
-    fontSize: 16
-  },
-    googleButton: {
-    backgroundColor: '#DB4437', // Google red
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 15
-  },
-  googleButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16
-  },
-  divider: {
-    textAlign: 'center',
-    marginVertical: 15,
-    color: '#666'
-  }
-});
+export default LoginScreen
