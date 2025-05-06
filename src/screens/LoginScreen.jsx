@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -8,42 +8,39 @@ import {
   StyleSheet,
   ActivityIndicator 
 } from 'react-native';
-import { auth, googleProvider } from '../services/firebase';
-import { createUserWithEmailAndPassword } from '../services/firebase';
+import { auth } from '../navigation/services/firebase';
+import { signInWithEmailAndPassword } from '../navigation/services/firebase';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
-export default function SignupScreen({ navigation }) {
+export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please fill all fields');
-      return;
-    }
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+    });
+  }, []);
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password should be at least 6 characters');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
       return;
     }
 
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      Alert.alert('Success', 'Account created successfully!');
-      navigation.navigate('Profile');
+      await signInWithEmailAndPassword(auth, email, password);
+      navigation.navigate('Feed');
     } catch (error) {
-      let errorMessage = 'Signup failed';
+      let errorMessage = 'Login failed';
       switch (error.code) {
-        case 'auth/email-already-in-use':
-          errorMessage = 'Email already in use';
+        case 'auth/user-not-found':
+          errorMessage = 'User not found';
           break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'Password should be at least 6 characters';
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password';
           break;
       }
       Alert.alert('Error', errorMessage);
@@ -52,34 +49,25 @@ export default function SignupScreen({ navigation }) {
     }
   };
 
-  const handleGoogleSignUp = async () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Check if Google Play Services is available
       await GoogleSignin.hasPlayServices();
-      
-      // Get the user's ID token
       const { idToken } = await GoogleSignin.signIn();
-      
-      // Create a Google credential with the token
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-      
-      // Sign in with the credential
       await auth.signInWithCredential(googleCredential);
-      
-      Alert.alert('Success', 'Account created with Google!');
-      navigation.navigate('Profile');
+      navigation.navigate('Feed');
     } catch (error) {
       Alert.alert('Error', error.message);
-      console.error('Google Sign-In Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
+      <Text style={styles.title}>Login</Text>
 
       <TextInput
         placeholder="Email"
@@ -91,7 +79,7 @@ export default function SignupScreen({ navigation }) {
       />
 
       <TextInput
-        placeholder="Password (min 6 characters)"
+        placeholder="Password"
         value={password}
         onChangeText={setPassword}
         style={styles.input}
@@ -101,24 +89,23 @@ export default function SignupScreen({ navigation }) {
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : (
-        <TouchableOpacity style={styles.button} onPress={handleSignup}>
-          <Text style={styles.buttonText}>Sign Up</Text>
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
       )}
-
       <TouchableOpacity 
-        style={styles.googleButton}
-        onPress={handleGoogleSignUp}
-        disabled={loading}
-      >
-        <Text style={styles.googleButtonText}>Sign up with Google</Text>
-      </TouchableOpacity>
+  style={styles.googleButton}
+  onPress={handleGoogleSignIn}
+  disabled={loading}
+>
+  <Text style={styles.googleButtonText}>Sign in with Google</Text>
+</TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.secondaryButton}
-        onPress={() => navigation.navigate('Login')}
-      >
-        <Text style={styles.secondaryText}>Already have an account? Login</Text>
+        onPress={() => navigation.navigate('SignupScreen')}
+        >
+        <Text style={styles.secondaryText}>Don't have an account? Sign Up</Text>
       </TouchableOpacity>
     </View>
   );
@@ -147,7 +134,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white'
   },
   button: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#007bff',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -165,8 +152,8 @@ const styles = StyleSheet.create({
     color: '#007bff',
     fontSize: 16
   },
-  googleButton: {
-    backgroundColor: '#DB4437',
+    googleButton: {
+    backgroundColor: '#DB4437', // Google red
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
